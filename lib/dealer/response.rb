@@ -1,31 +1,51 @@
 module Dealer
 
-  class Serializer
+  class Response
 
-    def initialize( payload = [], options = {} )
-      @payload = [ payload ].flatten
-      @options = options
+    attr_reader :code
+    attr_reader :body
+    attr_reader :resources 
+    
+    def initialize( http_response )
+
+      @success = http_response.is_a?( Net::HTTPOK )
+
+      @code = http_response.code
+      @resources = []
+
+      @body = decode_response_body( http_response )
+
+      if ( @body && @body.respond_to?( :keys ) )
+        Dealer::Parser.new( @body ) do | parser |
+          @resources = parser.resources
+          @success = !parser.type_name?( :error )
+        end
+      else
+        @success = false
+        @resources << Dealer::Error.new( 
+          message: "#{@code}: #{http_response.message}."
+        )
+      end
     end
 
-    def serialize( node, options = {} )
-      result = {}
-      result[ node ] = @payload.map do | object |
-        node_object = {}
-        node_object[ :type_name ] = ( 
-          object.respond_to?( :type_name ) ? 
-            object.type_name :
-            object.class.name.gsub( /Dealer::/, '' ).underscore 
-        )
-        if object.respond_to?( :fields )
-          object.fields.each do | name, options | 
-            node_object[ name.to_sym ] = object.send( name )
-          end
-        end
-        node_object
+    def success?
+      @success
+    end
+    
+    def failure?
+      not @success
+    end
+    
+    protected; def decode_response_body( http_response )
+      body = http_response.body
+
+      if body.present?
+        JSON.parse( body ) rescue nil
+      else
+        nil
       end
-      result
     end
 
   end
-
+  
 end
