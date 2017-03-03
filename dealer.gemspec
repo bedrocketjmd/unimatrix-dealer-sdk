@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 $LOAD_PATH.unshift File.expand_path( "../lib", __FILE__ )
+require 'version'
 
 Gem::Specification.new do | gem |
   gem.version       = Dealer::VERSION
